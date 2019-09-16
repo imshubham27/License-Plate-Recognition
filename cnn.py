@@ -43,12 +43,12 @@ train_datagen= ImageDataGenerator(rescale = 1./255,
 
 test_datagen= ImageDataGenerator(rescale = 1./255)
 
-training_set =train_datagen.flow_from_directory('training_set',
+training_set =train_datagen.flow_from_directory('Dataset/training_set',
                                                  target_size = (128, 128),
                                                  batch_size = 32,
                                                  class_mode = 'binary')
 
-test_set = test_datagen.flow_from_directory('test_set',
+test_set = test_datagen.flow_from_directory('Dataset/test_set',
                                             target_size = (128, 128),
                                             batch_size = 32,
                                             class_mode = 'binary')
@@ -60,6 +60,17 @@ classifier.fit_generator(training_set,
                          validation_steps = 593)
 #SAVING THE MODEL
 classifier.save('Car_Recognition.h5')
+classifier = load_model('Car_Recognition.h5')
+
+test_steps_per_epoch = np.math.ceil(test_set.samples / test_set.batch_size)
+
+predictions = classifier.predict_generator(test_set, steps=test_steps_per_epoch)
+true_classes = test_set.classes
+class_labels = list(test_set.class_indices.keys())   
+# Get most likely class
+predicted_classes = np.argmax(predictions, axis=1)
+report = classification_report(true_classes, predicted_classes, target_names=class_labels)
+print(report)  
 #from keras.preprocessing import image
 #test_image = image.load_img('image_0481.jpg', target_size = (128, 128))
 #test_image = image.img_to_array(test_image)
@@ -186,12 +197,12 @@ train_datagen1= ImageDataGenerator(rescale = 1./255,
 
 test_datagen1= ImageDataGenerator(rescale = 1./255)
 
-training_set1 =train_datagen1.flow_from_directory('training1_set',
+training_set1 =train_datagen1.flow_from_directory('Dataset/training1_set',
                                                  target_size = (128, 128),
                                                  batch_size = 32,
                                                  class_mode = 'binary')
 
-test_set1 = test_datagen1.flow_from_directory('test1_set',
+test_set1 = test_datagen1.flow_from_directory('Dataset/test1_set',
                                             target_size = (128, 128),
                                             batch_size = 32,
                                             class_mode = 'binary')
@@ -204,6 +215,17 @@ classifier1.fit_generator(training_set1,
 
 #SAVING THE MODEL
 classifier1.save('License_Plate_Recognition.h5')
+classifier1 = load_model('License_Plate_Recognition.h5')
+
+test_steps_per_epoch1 = np.math.ceil(test_set1.samples / test_set1.batch_size)
+
+predictions1 = classifier1.predict_generator(test_set1, steps=test_steps_per_epoch1)
+true_classes1 = test_set1.classes
+class_labels1 = list(test_set1.class_indices.keys())   
+# Get most likely class
+predicted_classes1 = np.argmax(predictions1, axis=1)
+report1 = classification_report(true_classes1, predicted_classes1, target_names=class_labels1)
+print(report1)  
 #from keras.preprocessing import image
 #test_image = image.load_img('image_0481.jpg', target_size = (128, 128))
 #test_image = image.img_to_array(test_image)
@@ -335,12 +357,12 @@ train_datagen2= ImageDataGenerator(rescale = 1./255,
 
 test_datagen2= ImageDataGenerator(rescale = 1./255)
 
-training_set2 =train_datagen2.flow_from_directory('training2_set',
+training_set2 =train_datagen2.flow_from_directory('Dataset/training2_set',
                                                  target_size = (64, 64),
                                                  batch_size = 32,
                                                  class_mode = 'categorical')
 
-test_set2 = test_datagen2.flow_from_directory('test2_set',
+test_set2 = test_datagen2.flow_from_directory('Dataset/test2_set',
                                             target_size = (64, 64),
                                             batch_size = 32,
                                             class_mode = 'categorical')
@@ -363,6 +385,7 @@ print(report)
 
 #SAVING THE MODEL
 classifier2.save('Character_Recognition.h5')
+classifier2 = load_model('Character_Recognition.h5')
 
 from keras.preprocessing import image
 test_image2 = image.load_img('image(20).jpg', target_size = (64, 64))
@@ -450,24 +473,29 @@ print(result2)
 import cv2 
 import numpy as np 
 # Let's load a simple image with 3 black squares 
-image3 = cv2.imread('I00000.jpg')
+image3 = cv2.imread('I00004 (3).png')
 
 # Grayscale 
 gray = cv2.cvtColor(image3, cv2.COLOR_BGR2GRAY) 
-blur = cv2.GaussianBlur(gray, (11, 11), 0)
-#cv2.threshold(img,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU,img)
-#img = cv2.bitwise_not(img)
+image3 = cv2.GaussianBlur(gray, (11, 11), 0)
+cv2.threshold(image3,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU,image3)
+kernel = np.ones((3,3),np.uint8)
+image3 = cv2.morphologyEx(image3, cv2.MORPH_OPEN, kernel)
+image3 = cv2.bitwise_not(image3)
+kernel1 = np.ones((3,3),np.uint8)
+image3 = cv2.erode(image3, kernel1, iterations=1)
+
 cv2.imshow("BLURRED",image3)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 # Find Canny edges 
-edged = cv2.Canny(blur, 30, 200) 
+edged = cv2.Canny(image3, 30, 200) 
 cv2.waitKey(0) 
 # Finding Contours 
 # Use a copy of the image e.g. edged.copy() 
 # since findContours alters the image 
-contours, hierarchy = cv2.findContours(edged, 
+contours, hierarchy = cv2.findContours(image3, 
 	cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE) 
 n=len(contours)
 area=[]
@@ -553,15 +581,23 @@ cv2.destroyAllWindows()
     
 
 import cv2
-img = cv2.imread('max_contour.jpg', 0)
-#img = cv2.GaussianBlur(img, (11, 11), 0)
+import numpy as np
+img = cv2.imread('i (7).jpg')
+img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+#img = cv2.GaussianBlur(img, (7, 7), 0)
 cv2.threshold(img,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU,img)
+kernel = np.ones((3,3),np.uint8)
+img = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
 img = cv2.bitwise_not(img)
+kernel1 = np.ones((1,1),np.uint8)
+img = cv2.erode(img, kernel1, iterations=1)
+img = cv2.Canny(img, 30, 200) 
 contours, hier = cv2.findContours(img, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+cv2.drawContours(img, contours, -1, (0, 255, 0), 3) 
+cv2.imshow('Contours', img) 
+cv2.waitKey(0) 
+cv2.destroyAllWindows() 
 
-contours = sorted(contours, key=lambda ctr: cv2.boundingRect(ctr)[0])
-cv2.imshow("contours", img)
-cv2.waitKey(0)
 d=0
 for ctr in contours:
     # Get bounding box
