@@ -13,7 +13,7 @@ from keras.models import load_model
 classifier = Sequential()
 
 #Convolution
-classifier.add(Conv2D(32, (5, 5), input_shape = (128, 128, 3), activation = 'relu'))
+classifier.add(Conv2D(32, (5, 5), input_shape = (512, 512, 3), activation = 'relu'))
 
 #Pooling
 classifier.add(MaxPooling2D(pool_size = (2, 2)))
@@ -44,12 +44,12 @@ train_datagen= ImageDataGenerator(rescale = 1./255,
 test_datagen= ImageDataGenerator(rescale = 1./255)
 
 training_set =train_datagen.flow_from_directory('Dataset/training_set',
-                                                 target_size = (128, 128),
+                                                 target_size = (512, 512),
                                                  batch_size = 32,
                                                  class_mode = 'binary')
 
 test_set = test_datagen.flow_from_directory('Dataset/test_set',
-                                            target_size = (128, 128),
+                                            target_size = (512, 512),
                                             batch_size = 32,
                                             class_mode = 'binary')
 
@@ -60,7 +60,7 @@ classifier.fit_generator(training_set,
                          validation_steps = 593)
 #SAVING THE MODEL
 classifier.save('Car_Recognition.h5')
-classifier = load_model('Car_Recognition.h5')
+#classifier = load_model('Car_Recognition.h5')
 
 test_steps_per_epoch = np.math.ceil(test_set.samples / test_set.batch_size)
 
