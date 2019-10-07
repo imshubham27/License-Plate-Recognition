@@ -1,1 +1,1 @@
- 
+ # Number Plate Detection with a Multi-Convolutional Neural Network Approach with Optical Character Recognition for Mobile Devices 
