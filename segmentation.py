@@ -1,4 +1,3 @@
-import cv2
 import pytesseract
 import imutils
 
@@ -7,8 +6,10 @@ from imutils.object_detection import non_max_suppression
 import numpy as np
 import pytesseract
 import argparse
-import cv2
-pytesseract.pytesseract.tesseract_cmd = 'C:\Program Files\Tesseract-OCR\tesseract.exe'
+import cv2 # For OpenCV modules (For Image I/O and Contour Finding)
+import numpy as np # For general purpose array manipulation
+import scipy.fftpack # For FFT2 
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 def decode_predictions(scores, geometry):
 	# grab the number of rows and columns from the scores volume, then
@@ -34,7 +35,7 @@ def decode_predictions(scores, geometry):
 		for x in range(0, numCols):
 			# if our score does not have sufficient probability,
 			# ignore it
-			if scoresData[x] < args["min_confidence"]:
+			if scoresData[x] < 0.5:
 				continue
 
 			# compute the offset factor as our resulting feature
@@ -67,28 +68,149 @@ def decode_predictions(scores, geometry):
 	# return a tuple of the bounding boxes and associated confidences
 	return (rects, confidences)
 
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--image", type=str,
-	help="path to input image")
-ap.add_argument("-east", "--east", type=str,
-	help="path to input EAST text detector")
-ap.add_argument("-c", "--min-confidence", type=float, default=0.5,
-	help="minimum probability required to inspect a region")
-ap.add_argument("-w", "--width", type=int, default=320,
-	help="nearest multiple of 32 for resized width")
-ap.add_argument("-e", "--height", type=int, default=320,
-	help="nearest multiple of 32 for resized height")
-ap.add_argument("-p", "--padding", type=float, default=0.0,
-	help="amount of padding to add to each border of ROI")
-args = vars(ap.parse_args())
 
+#### imclearborder definition
 
+def imclearborder(imgBW, radius):
+
+    # Given a black and white image, first find all of its contours
+    imgBWcopy = imgBW.copy()
+    contours,hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, 
+        cv2.CHAIN_APPROX_SIMPLE)
+
+    # Get dimensions of image
+    imgRows = imgBW.shape[0]
+    imgCols = imgBW.shape[1]    
+
+    contourList = [] # ID list of contours that touch the border
+
+    # For each contour...
+    for idx in np.arange(len(contours)):
+        # Get the i'th contour
+        cnt = contours[idx]
+
+        # Look at each point in the contour
+        for pt in cnt:
+            rowCnt = pt[0][1]
+            colCnt = pt[0][0]
+
+            # If this is within the radius of the border
+            # this contour goes bye bye!
+            check1 = (rowCnt >= 0 and rowCnt < radius) or (rowCnt >= imgRows-1-radius and rowCnt < imgRows)
+            check2 = (colCnt >= 0 and colCnt < radius) or (colCnt >= imgCols-1-radius and colCnt < imgCols)
+
+            if check1 or check2:
+                contourList.append(idx)
+                break
+
+    for idx in contourList:
+        cv2.drawContours(imgBWcopy, contours, idx, (0,0,0), -1)
+
+    return imgBWcopy
+
+#### bwareaopen definition
+def bwareaopen(imgBW, areaPixels):
+    # Given a black and white image, first find all of its contours
+    imgBWcopy = imgBW.copy()
+    contours,hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, 
+        cv2.CHAIN_APPROX_SIMPLE)
+
+    # For each contour, determine its total occupying area
+    for idx in np.arange(len(contours)):
+        area = cv2.contourArea(contours[idx])
+        if (area >= 0 and area <= areaPixels):
+            cv2.drawContours(imgBWcopy, contours, idx, (0,0,0), -1)
+
+    return imgBWcopy
+
+#### Main program
+
+# Read in image
+img = cv2.imread('/content/drive/My Drive/plate10/I00133.png', 0)
+
+# Number of rows and columns
+rows = img.shape[0]
+cols = img.shape[1]
+
+# Remove some columns from the beginning and end
+img = img[:, 59:cols-20]
+
+# Number of rows and columns
+rows = img.shape[0]
+cols = img.shape[1]
+
+# Convert image to 0 to 1, then do log(1 + I)
+imgLog = np.log1p(np.array(img, dtype="float") / 255)
+
+# Create Gaussian mask of sigma = 10
+M = 2*rows + 1
+N = 2*cols + 1
+sigma = 10
+(X,Y) = np.meshgrid(np.linspace(0,N-1,N), np.linspace(0,M-1,M))
+centerX = np.ceil(N/2)
+centerY = np.ceil(M/2)
+gaussianNumerator = (X - centerX)**2 + (Y - centerY)**2
+
+# Low pass and high pass filters
+Hlow = np.exp(-gaussianNumerator / (2*sigma*sigma))
+Hhigh = 1 - Hlow
+
+# Move origin of filters so that it's at the top left corner to
+# match with the input image
+HlowShift = scipy.fftpack.ifftshift(Hlow.copy())
+HhighShift = scipy.fftpack.ifftshift(Hhigh.copy())
+
+# Filter the image and crop
+If = scipy.fftpack.fft2(imgLog.copy(), (M,N))
+Ioutlow = scipy.real(scipy.fftpack.ifft2(If.copy() * HlowShift, (M,N)))
+Iouthigh = scipy.real(scipy.fftpack.ifft2(If.copy() * HhighShift, (M,N)))
+
+# Set scaling factors and add
+gamma1 = 0.3
+gamma2 = 1.5
+Iout = gamma1*Ioutlow[0:rows,0:cols] + gamma2*Iouthigh[0:rows,0:cols]
+
+# Anti-log then rescale to [0,1]
+Ihmf = np.expm1(Iout)
+Ihmf = (Ihmf - np.min(Ihmf)) / (np.max(Ihmf) - np.min(Ihmf))
+Ihmf2 = np.array(255*Ihmf, dtype="uint8")
+
+# Threshold the image - Anything below intensity 65 gets set to white
+Ithresh = Ihmf2 < 65
+Ithresh = 255*Ithresh.astype("uint8")
+
+# Clear off the border.  Choose a border radius of 5 pixels
+Iclear = imclearborder(Ithresh, 5)
+
+# Eliminate regions that have areas below 120 pixels
+Iopen = bwareaopen(Iclear, 120)
+
+# Show all images
+cv2_imshow(img)
+#cv2.imshow('Homomorphic Filtered Result', Ihmf2)
+cv2_imshow(Ithresh)
+cv2_imshow(Iopen)
+print(Iopen.ndim)
 # load the input image and grab the image dimensions
-image = cv2.imread('rotated.png')
+image = cv2.imread('plate10/I00108.png')
+print(image.shape)
 orig = image.copy()
 (origH, origW) = image.shape[:2]
 cv2.imshow('image',image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+coords = np.column_stack(np.where(image > 0))
+angle = cv2.minAreaRect(coords)[-1]
+if angle < -45:
+    angle = -(90 + angle)
+else:
+    angle = -angle
+(h, w) = image.shape[:2]
+center = (w // 2, h // 2)
+M = cv2.getRotationMatrix2D(center, angle, 1.0)
+rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+cv2.imshow(rotated)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
  
@@ -144,8 +266,8 @@ for (startX, startY, endX, endY) in boxes:
 	# in order to obtain a better OCR of the text we can potentially
 	# apply a bit of padding surrounding the bounding box -- here we
 	# are computing the deltas in both the x and y directions
-	dX = int((endX - startX) * 0.05)
-	dY = int((endY - startY) * 0.05)
+	dX = int((endX - startX) * 0.25)
+	dY = int((endY - startY) * 0.25)
 
 	# apply padding to each side of the bounding box, respectively
 	startX = max(0, startX - dX)
@@ -167,3 +289,27 @@ text = pytesseract.image_to_string(roi, config=config)
 # add the bounding box coordinates and OCR'd text to the list
 # of results
 results.append(((startX, startY, endX, endY), text))
+
+# sort the results bounding box coordinates from top to bottom
+results = sorted(results, key=lambda r:r[0][1])
+
+# loop over the results
+for ((startX, startY, endX, endY), text) in results:
+	# display the text OCR'd by Tesseract
+	print("OCR TEXT")
+	print("========")
+	print("{}\n".format(text))
+
+	# strip out non-ASCII text so we can draw the text on the image
+	# using OpenCV, then draw the text and a bounding box surrounding
+	# the text region of the input image
+	text = "".join([c if ord(c) < 128 else "" for c in text]).strip()
+	output = orig.copy()
+	cv2.rectangle(output, (startX, startY), (endX, endY),
+		(0, 0, 255), 2)
+	cv2.putText(output, text, (startX, startY - 20),
+		cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+
+	# show the output image
+	cv2.imshow("Text Detection", output)
+	cv2.waitKey(0)
