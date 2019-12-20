@@ -5,7 +5,6 @@ import imutils
 from imutils.object_detection import non_max_suppression
 import numpy as np
 import pytesseract
-import argparse
 import cv2 # For OpenCV modules (For Image I/O and Contour Finding)
 import numpy as np # For general purpose array manipulation
 import scipy.fftpack # For FFT2 
@@ -126,7 +125,8 @@ def bwareaopen(imgBW, areaPixels):
 #### Main program
 
 # Read in image
-img = cv2.imread('/content/drive/My Drive/plate10/I00133.png', 0)
+img = cv2.imread('plate10\I00060.png')
+print(img.shape)
 
 # Number of rows and columns
 rows = img.shape[0]
@@ -186,13 +186,13 @@ Iclear = imclearborder(Ithresh, 5)
 Iopen = bwareaopen(Iclear, 120)
 
 # Show all images
-cv2_imshow(img)
-#cv2.imshow('Homomorphic Filtered Result', Ihmf2)
-cv2_imshow(Ithresh)
-cv2_imshow(Iopen)
-print(Iopen.ndim)
+cv2.imshow("IMAGE",img)
+#cv2.imshow("IOPEN",Iopen)
+#print(Iopen.ndim)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 # load the input image and grab the image dimensions
-image = cv2.imread('plate10/I00108.png')
+#image = cv2.imread('plate10/I00108.png')
 print(image.shape)
 orig = image.copy()
 (origH, origW) = image.shape[:2]
