@@ -168,7 +168,6 @@ kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9,3))
 dilated = cv2.dilate(imageContours, kernel, iterations=4)
 cv2_imshow(dilated)
 
-from skimage.color import rgb2gray
 grayscale = cv2.cvtColor(dilated, cv2.COLOR_BGR2GRAY)
 cv2_imshow(grayscale)
 thresh1 = cv2.adaptiveThreshold(grayscale, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 19, 9)
@@ -180,174 +179,12 @@ for c in cnts:
     area = cv2.contourArea(c)
     if (area > 1000) and (area < 100000):
         x,y,w,h = cv2.boundingRect(c)
-        cv2.rectangle(img, (x, y), (x + w, y + h), (36,255,12), 3)
-        # ROI = image[y:y+h, x:x+w]
-        # cv2.imwrite('ROI_{}.png'.format(ROI_number), ROI)
-        # ROI_number += 1
+        #cv2.rectangle(img, (x, y), (x + w, y + h), (36,255,12), 3)
+        ROI = img[y:y+h, x:x+w]
+        #cv2_imshow(ROI)
+        io.imsave('/content/drive/My Drive/ROI/ROI_{}.png'.format(ROI_number), ROI)
+        ROI_number += 1
 
 #cv2.imshow('thresh', thresh)
-cv2_imshow(dilated)
-cv2_imshow(img)
-
-plates_list = []
-listOfListsOfMatchingChars = []
-
-for possibleC in possibleChars:
-
-    # the purpose of this function is, given a possible char and a big list of possible chars,
-    # find all chars in the big list that are a match for the single possible char, and return those matching chars as a list
-    def matchingChars(possibleC, possibleChars):
-        listOfMatchingChars = []
-
-        # if the char we attempting to find matches for is the exact same char as the char in the big list we are currently checking
-        # then we should not include it in the list of matches b/c that would end up double including the current char
-        # so do not add to list of matches and jump back to top of for loop
-        for possibleMatchingChar in possibleChars:
-            if possibleMatchingChar == possibleC:
-                continue
-
-            # compute stuff to see if chars are a match
-            dBetweenChars = distanceBetweenChars(possibleC, possibleMatchingChar)
-
-            aBetweenChars = angleBetweenChars(possibleC, possibleMatchingChar)
-
-            changeInArea = float(abs(possibleMatchingChar.boundingRectArea - possibleC.boundingRectArea)) / float(
-                possibleC.boundingRectArea)
-
-            changeInWidth = float(abs(possibleMatchingChar.boundingRectWidth - possibleC.boundingRectWidth)) / float(
-                possibleC.boundingRectWidth)
-
-            changeInHeight = float(abs(possibleMatchingChar.boundingRectHeight - possibleC.boundingRectHeight)) / float(
-                possibleC.boundingRectHeight)
-
-            # check if chars match
-            if dBetweenChars < (possibleC.diagonalSize * 2.5) and \
-                    aBetweenChars < 12.0 and \
-                    changeInArea < 0.5 and \
-                    changeInWidth < 0.8 and \
-                    changeInHeight < 0.2:
-                listOfMatchingChars.append(possibleMatchingChar)
-
-        return listOfMatchingChars
-
-
-    # here we are re-arranging the one big list of chars into a list of lists of matching chars
-    # the chars that are not found to be in a group of matches do not need to be considered further
-    listOfMatchingChars = matchingChars(possibleC, possibleChars)
-
-    listOfMatchingChars.append(possibleC)
-
-    # if current possible list of matching chars is not long enough to constitute a possible plate
-    # jump back to the top of the for loop and try again with next char
-    if len(listOfMatchingChars) < 3:
-        continue
-
-    # here the current list passed test as a "group" or "cluster" of matching chars
-    listOfListsOfMatchingChars.append(listOfMatchingChars)
-
-    # remove the current list of matching chars from the big list so we don't use those same chars twice,
-    # make sure to make a new big list for this since we don't want to change the original big list
-    listOfPossibleCharsWithCurrentMatchesRemoved = list(set(possibleChars) - set(listOfMatchingChars))
-
-    recursiveListOfListsOfMatchingChars = []
-
-    for recursiveListOfMatchingChars in recursiveListOfListsOfMatchingChars:
-        listOfListsOfMatchingChars.append(recursiveListOfMatchingChars)
-
-    break
-
-imageContours = np.zeros((height, width, 3), np.uint8)
-
-for listOfMatchingChars in listOfListsOfMatchingChars:
-    contoursColor = (255, 0, 255)
-
-    contours = []
-
-    for matchingChar in listOfMatchingChars:
-        contours.append(matchingChar.contour)
-
-    cv2.drawContours(imageContours, contours, -1, contoursColor)
-
-cv2_imshow(imageContours)
-
-for listOfMatchingChars in listOfListsOfMatchingChars:
-    possiblePlate = PossiblePlate()
-
-    # sort chars from left to right based on x position
-    listOfMatchingChars.sort(key=lambda matchingChar: matchingChar.centerX)
-
-    # calculate the center point of the plate
-    plateCenterX = (listOfMatchingChars[0].centerX + listOfMatchingChars[len(listOfMatchingChars) - 1].centerX) / 2.0
-    plateCenterY = (listOfMatchingChars[0].centerY + listOfMatchingChars[len(listOfMatchingChars) - 1].centerY) / 2.0
-
-    plateCenter = plateCenterX, plateCenterY
-
-    # calculate plate width and height
-    plateWidth = int((listOfMatchingChars[len(listOfMatchingChars) - 1].boundingRectX + listOfMatchingChars[
-        len(listOfMatchingChars) - 1].boundingRectWidth - listOfMatchingChars[0].boundingRectX) * 1.3)
-
-    totalOfCharHeights = 0
-
-    for matchingChar in listOfMatchingChars:
-        totalOfCharHeights = totalOfCharHeights + matchingChar.boundingRectHeight
-
-    averageCharHeight = totalOfCharHeights / len(listOfMatchingChars)
-
-    plateHeight = int(averageCharHeight * 1.5)
-
-    # calculate correction angle of plate region
-    opposite = listOfMatchingChars[len(listOfMatchingChars) - 1].centerY - listOfMatchingChars[0].centerY
-
-    hypotenuse = distanceBetweenChars(listOfMatchingChars[0],
-                                                listOfMatchingChars[len(listOfMatchingChars) - 1])
-    correctionAngleInRad = math.asin(opposite / hypotenuse)
-    correctionAngleInDeg = correctionAngleInRad * (180.0 / math.pi)
-
-    # pack plate region center point, width and height, and correction angle into rotated rect member variable of plate
-    possiblePlate.rrLocationOfPlateInScene = (tuple(plateCenter), (plateWidth, plateHeight), correctionAngleInDeg)
-
-    # get the rotation matrix for our calculated correction angle
-    rotationMatrix = cv2.getRotationMatrix2D(tuple(plateCenter), correctionAngleInDeg, 1.0)
-
-    height, width, numChannels = img.shape
-
-    # rotate the entire image
-    imgRotated = cv2.warpAffine(img, rotationMatrix, (width, height))
-
-    # crop the image/plate detected
-    imgCropped = cv2.getRectSubPix(imgRotated, (plateWidth, plateHeight), tuple(plateCenter))
-
-    # copy the cropped plate image into the applicable member variable of the possible plate
-    possiblePlate.Plate = imgCropped
-
-    # populate plates_list with the detected plate
-    if possiblePlate.Plate is not None:
-        plates_list.append(possiblePlate)
-
-    # draw a ROI on the original image
-    for i in range(0, len(plates_list)):
-        # finds the four vertices of a rotated rect - it is useful to draw the rectangle.
-        p2fRectPoints = cv2.boxPoints(plates_list[i].rrLocationOfPlateInScene)
-        print(p2fRectPoints)
-
-        # roi rectangle colour
-        rectColour = (0, 255, 0)
-
-        cv2.line(imageContours, tuple(p2fRectPoints[0]), tuple(p2fRectPoints[1]), rectColour, 2)
-        cv2.line(imageContours, tuple(p2fRectPoints[1]), tuple(p2fRectPoints[2]), rectColour, 2)
-        cv2.line(imageContours, tuple(p2fRectPoints[2]), tuple(p2fRectPoints[3]), rectColour, 2)
-        cv2.line(imageContours, tuple(p2fRectPoints[3]), tuple(p2fRectPoints[0]), rectColour, 2)
-
-        cv2.line(img, tuple(p2fRectPoints[0]), tuple(p2fRectPoints[1]), rectColour, 2)
-        cv2.line(img, tuple(p2fRectPoints[1]), tuple(p2fRectPoints[2]), rectColour, 2)
-        cv2.line(img, tuple(p2fRectPoints[2]), tuple(p2fRectPoints[3]), rectColour, 2)
-        cv2.line(img, tuple(p2fRectPoints[3]), tuple(p2fRectPoints[0]), rectColour, 2)
-        #cv2_imshow(imageContours)
-        # cv2.imwrite(temp_folder + '11 - detected.png', imageContours)
-
-        #cv2_imshow(img)
-        # cv2.imwrite(temp_folder + '12 - detectedOriginal.png', img)
-        LP=plates_list[i].Plate
-        cv2_imshow(plates_list[i].Plate)
-        cv2.imwrite('/content/drive/My Drive/plate10/a1.png', plates_list[i].Plate)
-
+#cv2_imshow(dilated)
+#cv2_imshow(img)
