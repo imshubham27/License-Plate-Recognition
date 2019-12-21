@@ -10,16 +10,17 @@ Original file is located at
 from google.colab import drive
 drive.mount('/content/drive')
 
-pip install scikit-image
+#pip install scikit-image
 
 import cv2
 import numpy as np
 import math
 from skimage import img_as_ubyte
 from skimage import io
+from skimage.color import rgb2gray
 from google.colab.patches import cv2_imshow
 
-img = io.imread('/content/drive/My Drive/car1.jpg')
+img = io.imread('/content/drive/My Drive/car15.png')
 print(img.shape)
 #img=cv2.resize
 #cv2_imshow(img)
@@ -163,19 +164,21 @@ cv2.drawContours(imageContours, ctrs, -1, (255, 255, 255))
 
 cv2_imshow(imageContours)
 
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (6,3))
-dilated = cv2.dilate(imageContours, kernel, iterations=3)
+kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9,3))
+dilated = cv2.dilate(imageContours, kernel, iterations=4)
 cv2_imshow(dilated)
 
-dilated = img_as_ubyte(dilated)
-#cnts, hierarchy1 = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-cnts,_ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+from skimage.color import rgb2gray
+grayscale = cv2.cvtColor(dilated, cv2.COLOR_BGR2GRAY)
+cv2_imshow(grayscale)
+thresh1 = cv2.adaptiveThreshold(grayscale, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 19, 9)
+cnts,_ = cv2.findContours(thresh1, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 #cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 
 ROI_number = 0
 for c in cnts:
     area = cv2.contourArea(c)
-    if area > 5000:
+    if (area > 1000) and (area < 100000):
         x,y,w,h = cv2.boundingRect(c)
         cv2.rectangle(img, (x, y), (x + w, y + h), (36,255,12), 3)
         # ROI = image[y:y+h, x:x+w]
@@ -185,24 +188,6 @@ for c in cnts:
 #cv2.imshow('thresh', thresh)
 cv2_imshow(dilated)
 cv2_imshow(img)
-
-cnts = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-
-ROI_number = 0
-for c in cnts:
-    area = cv2.contourArea(c)
-    if area > 10000:
-        x,y,w,h = cv2.boundingRect(c)
-        cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 3)
-        # ROI = image[y:y+h, x:x+w]
-        # cv2.imwrite('ROI_{}.png'.format(ROI_number), ROI)
-        # ROI_number += 1
-
-cv2.imshow('thresh', thresh)
-cv2.imshow('dilate', dilate)
-cv2.imshow('image', image)
-cv2.waitKey()
 
 plates_list = []
 listOfListsOfMatchingChars = []
