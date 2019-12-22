@@ -17,8 +17,10 @@ drive.mount('/content/drive')
 import pytesseract
 import shutil
 import os
+import math
 import random
 from skimage import io
+from skimage.transform import rescale
 try:
  from PIL import Image
 except ImportError:
@@ -86,7 +88,9 @@ def bwareaopen(imgBW, areaPixels):
 #### Main program
 
 # Read in image
-img = cv2.imread('/content/drive/My Drive/plate2.jpg', 0)
+img = cv2.imread('/content/drive/My Drive/imagess/ROI_9_14.png')
+height, width = img.shape[:2]
+img = cv2.resize(img, (width*3, height*3), interpolation = cv2.INTER_AREA)
 cv2_imshow(img)
 
 # Number of rows and columns
@@ -138,7 +142,7 @@ Ihmf = (Ihmf - np.min(Ihmf)) / (np.max(Ihmf) - np.min(Ihmf))
 Ihmf2 = np.array(255*Ihmf, dtype="uint8")
 
 # Threshold the image - Anything below intensity 65 gets set to white
-Ithresh = Ihmf2 < 65
+Ithresh = Ihmf2 < 90
 Ithresh = 255*Ithresh.astype("uint8")
 
 # Clear off the border.  Choose a border radius of 1 pixels
@@ -146,6 +150,11 @@ Iclear = imclearborder(Ithresh, 1)
 
 # Eliminate regions that have areas below 120 pixels
 Iopen = bwareaopen(Iclear, 120)
+height, width = Iopen.shape[:2]
+height=height/3
+width=width/3
+Iopen = cv2.resize(Iopen, (math.ceil(width / 2.) * 2, math.ceil(height / 2.) * 2), interpolation = cv2.INTER_AREA)
+
 
 # Show all images
 cv2_imshow(img)
