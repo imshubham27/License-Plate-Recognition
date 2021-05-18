@@ -1,4 +1,4 @@
-**#Running the Project**
+** #Running the Project **
 
 ##Starting the backend
 1. Open Windows Powershell/cmd on your system
