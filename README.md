@@ -36,17 +36,25 @@
 2. ##### Installing nodemon 
         npm i nodemon
 
+#### Indian License Plate Dataset along with annotation: [Link](https://drive.google.com/drive/folders/1XEzy56gdV0DrVwvIvYNdcLJbLIn4ehpm?usp=sharing)
 
-### Running the Project
-##### Starting the backend
-1. Open Windows Powershell/cmd on your system
-2. Use command *cd "path/backend"* to navigate to the backend folder
-3. Run command "npm install"
-4. Run command *nodemon app.js*
-5. The backend server is started at localhost:5000, if the port is already in use, change port number in app.js file
-##### Starting the frontend
-1. Open Windows Powershell/cmd on your system
-2. Use command *cd "path/frontend"* to navigate to the frontend folder.
-3. Run command "npx install"
-4. Run command *npm start*
-5. The frontend server is started at localhost:3000, if the port is already in use, edit *scripts/start. js* and find/replace 3000 with whatever port you want to use. 
+## Project Execution
+1. ##### Clone the repository on your local machine 
+
+2. ##### Before running the projects, Some files need to be downloaded into Backend folder:
+    * Pretrained [Yolov3 model 416X416](https://drive.google.com/file/d/1iWnW7-95zs1jUM8X6W5xBrlHLwKcA0YT/view?usp=sharing)
+    * Frozen [East Text Detector](https://drive.google.com/file/d/1wNrHp3pAXcQWWAfsAtRNVZ8AsTsHnQbb/view?usp=sharing)
+    * [Yolov3 416X416 weights](https://drive.google.com/file/d/1U1nKGd2mcSL3isNqyQbRlhBcRh748EOq/view?usp=sharing) (incase you want to train your own custom object detection model)
+
+3. ##### Starting the backend
+    * Open Windows Powershell/cmd on your system
+    * Use command *cd "path/backend"* to navigate to the backend folder
+    * Run command "npm install"
+    * Run command *nodemon app.js*
+    * The backend server is started at localhost:5000, if the port is already in use, change port number in app.js file
+4. ##### Starting the frontend
+    * Open Windows Powershell/cmd on your system
+    * Use command *cd "path/frontend"* to navigate to the frontend folder.
+    * Run command "npx install"
+    * Run command *npm start*
+    * The frontend server is started at localhost:3000, if the port is already in use, edit *scripts/start. js* and find/replace 3000 with whatever port you want to use. 

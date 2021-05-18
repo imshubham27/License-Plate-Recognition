@@ -1,0 +1,36 @@
+body {
+	background: #141414;
+	color: #ffffff;
+}
+
+.lpr > .row {
+	overflow-x: auto;
+	overflow-y: hidden;
+	flex-wrap: nowrap;
+}
+
+.cd{
+	padding: 10px;
+	display:inline-block;
+	flex-wrap: nowrap;
+}
+.cd:hover{
+    cursor: pointer;
+	transform: scale(1.1);
+}
+
+.name{
+    cursor: pointer;
+    word-break: break-all;
+    overflow:hidden;
+    white-space: nowrap;
+}
+
+::-webkit-scrollbar {
+    width: 0px;  /* Remove scrollbar space */
+    background: transparent;  /* Optional: just make scrollbar invisible */
+}
+
+.title{
+	font-size: small; 
+}
